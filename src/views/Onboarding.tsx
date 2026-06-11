@@ -102,7 +102,7 @@ export default function Onboarding() {
       consentDataHealth,
     })
     if (error) {
-      setSaveError('Failed to save. Check your connection and try again.')
+      setSaveError(error)
       setSaving(false)
       return
     }

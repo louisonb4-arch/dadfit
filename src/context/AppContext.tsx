@@ -343,8 +343,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       waistCm: profile.waistCm,
     }
 
+    if (isSupabaseConfigured && !authUser) {
+      return { error: 'No auth session — reload the page and try again.' }
+    }
+
     if (isSupabaseConfigured && authUser) {
-      const { error } = await supabase.from('profiles').update({
+      const { data: updated, error } = await supabase.from('profiles').update({
         first_name: profile.name,
         age: profile.age,
         main_goal: profile.mainGoal,
@@ -360,9 +364,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         consent_data_health: profile.consentDataHealth,
         consent_at: profile.consentDataHealth ? now : null,
         updated_at: now,
-      }).eq('id', authUser.id)
+      }).eq('id', authUser.id).select('id, onboarding_completed')
 
-      if (error) return { error: error.message }
+      if (error) return { error: `DB error: ${error.message}` }
+      if (!updated || updated.length === 0) return { error: 'Profile not found or update blocked. Check RLS policy.' }
     }
 
     // Only update local state after confirmed Supabase save (or in offline/dev mode)
