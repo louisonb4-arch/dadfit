@@ -111,16 +111,11 @@ export default function Onboarding() {
       updated_at:              now,
     }
 
-    console.log('[DadFit] onboarding user_id:', authUser?.id)
-    console.log('[DadFit] onboarding payload:', payload)
-
     const { data, error } = await supabase
       .from('profiles')
       .update(payload)
       .eq('id', authUser!.id)
       .select()
-
-    console.log('[DadFit] onboarding result:', { data, error })
 
     if (error) {
       setSaveError(`Save error: ${error.message}`)
