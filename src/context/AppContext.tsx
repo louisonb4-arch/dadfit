@@ -65,7 +65,7 @@ interface AppContextType {
   upsertCheckIn: (ci: Omit<CheckIn, 'id' | 'userId'>) => void
   addSession: (s: Omit<SessionLog, 'id' | 'userId'>) => Milestone | null
   updateUser: (u: Partial<User>) => void
-  completeOnboarding: (profile: OnboardingProfile) => void
+  completeOnboarding: (profile: OnboardingProfile) => Promise<{ error: string | null }>
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -98,14 +98,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setAuthUser(session?.user ?? null)
       if (session?.user) {
+        setAuthLoading(true)          // hold spinner until profile loaded — prevents onboarding flash
+        setAuthUser(session.user)
         await loadUserData(session.user.id)
+        setAuthLoading(false)
         identifyUser(session.user.id)
       } else {
+        setAuthUser(null)
         resetUser()
         setSubscriptionStatus('none')
         setIsOnboarded(false)
+        setAuthLoading(false)
       }
     })
     return () => subscription.unsubscribe()
@@ -159,9 +163,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       setUser(appUser)
       writeLS(KEYS.user, appUser)
-      if (p.onboarded_at) {
+      // Use onboarding_completed (002 migration) with onboarded_at as fallback
+      if (p.onboarding_completed || p.onboarded_at) {
         setIsOnboarded(true)
         writeLS(KEYS.onboarded, true)
+      } else {
+        setIsOnboarded(false)
+        writeLS(KEYS.onboarded, false)
       }
     }
 
@@ -317,9 +325,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [authUser])
 
-  const completeOnboarding = useCallback((profile: OnboardingProfile) => {
+  const completeOnboarding = useCallback(async (profile: OnboardingProfile): Promise<{ error: string | null }> => {
     const uid = authUser?.id ?? 'local'
     const today = new Date().toISOString().split('T')[0]
+    const now = new Date().toISOString()
     const newUser: User = {
       ...DEFAULT_USER,
       id: uid,
@@ -333,13 +342,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       weightCurrent: profile.weightKg ?? 0,
       waistCm: profile.waistCm,
     }
-    setUser(newUser)
-    writeLS(KEYS.user, newUser)
-    setIsOnboarded(true)
-    writeLS(KEYS.onboarded, true)
 
     if (isSupabaseConfigured && authUser) {
-      supabase.from('profiles').update({
+      const { error } = await supabase.from('profiles').update({
         first_name: profile.name,
         age: profile.age,
         main_goal: profile.mainGoal,
@@ -349,12 +354,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         weight_kg: profile.weightKg,
         waist_cm: profile.waistCm,
         program_start_date: today,
-        onboarded_at: new Date().toISOString(),
+        onboarded_at: now,
+        onboarding_completed: true,
+        onboarding_completed_at: now,
         consent_data_health: profile.consentDataHealth,
-        consent_at: profile.consentDataHealth ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
-      }).eq('id', authUser.id).then(() => {})
+        consent_at: profile.consentDataHealth ? now : null,
+        updated_at: now,
+      }).eq('id', authUser.id)
+
+      if (error) return { error: error.message }
     }
+
+    // Only update local state after confirmed Supabase save (or in offline/dev mode)
+    setUser(newUser)
+    writeLS(KEYS.user, newUser)
+    setIsOnboarded(true)
+    writeLS(KEYS.onboarded, true)
+    return { error: null }
   }, [authUser])
 
   const completedCount = sessions.filter(s => s.status !== 'skipped').length

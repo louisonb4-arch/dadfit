@@ -75,6 +75,8 @@ export default function Onboarding() {
   const [painAreas, setPainAreas] = useState<string[]>([])
   // Consent (collected on final step)
   const [consentDataHealth, setConsentDataHealth] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   function togglePain(area: string) {
     if (area === 'none') {
@@ -87,9 +89,10 @@ export default function Onboarding() {
     })
   }
 
-  function handleFinish() {
-    track.completedOnboarding({ fitness_level: fitnessLevel || undefined, main_goal: mainGoal || undefined, age: age || undefined })
-    completeOnboarding({
+  async function handleFinish() {
+    setSaving(true)
+    setSaveError(null)
+    const { error } = await completeOnboarding({
       name: name.trim(),
       age: age || undefined,
       numberOfKids: kids ?? undefined,
@@ -98,6 +101,12 @@ export default function Onboarding() {
       painAreas: painAreas.length ? painAreas : undefined,
       consentDataHealth,
     })
+    if (error) {
+      setSaveError('Failed to save. Check your connection and try again.')
+      setSaving(false)
+      return
+    }
+    track.completedOnboarding({ fitness_level: fitnessLevel || undefined, main_goal: mainGoal || undefined, age: age || undefined })
   }
 
   const canContinue = [
@@ -320,20 +329,25 @@ export default function Onboarding() {
           </div>
         )}
 
+        {/* Save error */}
+        {saveError && (
+          <p className="mt-3 text-sm text-red-500 rounded-xl px-4 py-3 bg-red-50 text-center">{saveError}</p>
+        )}
+
         {/* CTA */}
         <button
           onClick={isLast ? handleFinish : () => setStep(s => s + 1)}
-          disabled={!canContinue}
+          disabled={!canContinue || saving}
           className="w-full mt-4 py-4 rounded-2xl text-base font-black text-white transition-all active:scale-95"
           style={{
-            background: canContinue ? '#22C55E' : '#E5E7EB',
-            color: canContinue ? 'white' : '#9CA3AF',
+            background: canContinue && !saving ? '#22C55E' : '#E5E7EB',
+            color: canContinue && !saving ? 'white' : '#9CA3AF',
             fontFamily: 'Manrope',
-            cursor: canContinue ? 'pointer' : 'not-allowed',
-            boxShadow: canContinue ? '0 8px 24px rgba(34,197,94,0.3)' : 'none',
+            cursor: canContinue && !saving ? 'pointer' : 'not-allowed',
+            boxShadow: canContinue && !saving ? '0 8px 24px rgba(34,197,94,0.3)' : 'none',
           }}
         >
-          {isLast ? 'Start DadFit →' : step === 1 || step === 4 ? 'Continue →' : 'Continue →'}
+          {saving ? 'Saving…' : isLast ? 'Start DadFit →' : 'Continue →'}
         </button>
 
         {step > 0 && (
