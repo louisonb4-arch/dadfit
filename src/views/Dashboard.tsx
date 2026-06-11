@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import type { CheckIn, SessionLog, Milestone } from '../types'
 import { useApp } from '../context/AppContext'
+import { supabase } from '../lib/supabase'
 import { track } from '../lib/posthog'
 import { getStreak, calcWeeklyScore } from '../utils/score'
 import MilestoneToast from '../components/MilestoneToast'
@@ -274,10 +275,44 @@ function CheckInForm({ onSave, existing }: { onSave: (ci: Omit<CheckIn, 'id' | '
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function Dashboard({ onNavigate }: { onNavigate?: (view: string) => void }) {
-  const { user, checkIns, sessions, todayCheckIn, upsertCheckIn, completedCount } = useApp()
+  const { user, checkIns, sessions, todayCheckIn, upsertCheckIn, completedCount, updateUser, authUser } = useApp()
   const [activeMilestone, setActiveMilestone] = useState<Milestone | null>(null)
   const [showCheckIn, setShowCheckIn] = useState(false)
+  const [editingGoal, setEditingGoal] = useState(false)
+  const [editWeight, setEditWeight] = useState('')
+  const [editGoal, setEditGoal] = useState('')
+  const [goalSaving, setGoalSaving] = useState(false)
+  const [goalError, setGoalError] = useState<string | null>(null)
   useEffect(() => { track.dashboardViewed() }, [])
+
+  async function saveGoal() {
+    const w = parseFloat(editWeight)
+    const g = parseFloat(editGoal)
+    if (editGoal && editWeight && g >= w) {
+      setGoalError('Goal must be less than current weight.')
+      return
+    }
+    setGoalSaving(true)
+    setGoalError(null)
+    const payload: Record<string, number | null> = {}
+    if (editWeight) payload.weight_kg = w
+    if (editGoal) payload.weight_goal_kg = g
+    payload.updated_at = Date.now() // ignored by Supabase type but triggers update
+    const { error } = await supabase.from('profiles').update({
+      ...(editWeight ? { weight_kg: w } : {}),
+      ...(editGoal ? { weight_goal_kg: g } : {}),
+      updated_at: new Date().toISOString(),
+    }).eq('id', authUser!.id)
+    if (error) { setGoalError(error.message); setGoalSaving(false); return }
+    updateUser({
+      ...(editWeight ? { weightCurrent: w } : {}),
+      ...(editGoal ? { weightTarget: g } : {}),
+    })
+    setEditingGoal(false)
+    setGoalSaving(false)
+    setEditWeight('')
+    setEditGoal('')
+  }
 
   const today = new Date().toISOString().split('T')[0]
   const sessionDone = sessions.some(s => s.date === today && s.status === 'completed')
@@ -375,7 +410,38 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (view: string) 
 
             {/* Objective card */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-widest text-[#22C55E] mb-5">Ton objectif</p>
+              <div className="flex items-center justify-between mb-5">
+                <p className="text-xs font-black uppercase tracking-widest text-[#22C55E]">Ton objectif</p>
+                <button
+                  onClick={() => { setEditingGoal(e => !e); setGoalError(null); setEditWeight(currentWeight > 0 ? String(currentWeight) : ''); setEditGoal(user.weightTarget > 0 ? String(user.weightTarget) : '') }}
+                  className="text-xs font-bold text-[#9CA3AF] hover:text-[#22C55E] transition-colors px-2 py-1 rounded-lg hover:bg-[#F0FDF4]"
+                >
+                  {editingGoal ? 'Annuler' : '✏️ Modifier'}
+                </button>
+              </div>
+
+              {editingGoal ? (
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-[#6B7280] mb-1">Poids actuel (kg)</p>
+                      <input type="number" inputMode="decimal" value={editWeight} onChange={e => setEditWeight(e.target.value)} placeholder={currentWeight > 0 ? String(currentWeight) : '82'}
+                        className="w-full px-3 py-2.5 rounded-xl bg-[#F9FAFB] border-2 border-[#F3F4F6] text-sm font-bold text-[#111827] focus:outline-none focus:border-[#22C55E]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-[#6B7280] mb-1">Objectif (kg)</p>
+                      <input type="number" inputMode="decimal" value={editGoal} onChange={e => { setEditGoal(e.target.value); setGoalError(null) }} placeholder={user.weightTarget > 0 ? String(user.weightTarget) : '75'}
+                        className={`w-full px-3 py-2.5 rounded-xl bg-[#F9FAFB] border-2 text-sm font-bold text-[#111827] focus:outline-none ${goalError ? 'border-red-400' : 'border-[#F3F4F6] focus:border-[#22C55E]'}`} />
+                    </div>
+                  </div>
+                  {goalError && <p className="text-xs text-red-500">{goalError}</p>}
+                  <button onClick={saveGoal} disabled={goalSaving}
+                    className="w-full py-2.5 rounded-xl text-sm font-black text-white transition-all active:scale-95 disabled:opacity-60"
+                    style={{ background: '#22C55E', fontFamily: 'Manrope' }}>
+                    {goalSaving ? 'Enregistrement…' : 'Enregistrer'}
+                  </button>
+                </div>
+              ) : (
               <div className="grid gap-4" style={{ gridTemplateColumns: 'auto 1fr auto' }}>
 
                 {/* Weight */}
@@ -388,7 +454,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (view: string) 
                   </div>
                   <span className="text-[#22C55E] text-lg font-bold">↓</span>
                   <div>
-                    <p className="text-2xl font-black text-[#111827]" style={{ fontFamily: 'Manrope' }}>{user.weightTarget} kg</p>
+                    <p className="text-2xl font-black text-[#111827]" style={{ fontFamily: 'Manrope' }}>{user.weightTarget > 0 ? `${user.weightTarget} kg` : '— kg'}</p>
                     <p className="text-xs text-[#9CA3AF] font-semibold">objectif</p>
                   </div>
                 </div>
@@ -418,6 +484,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (view: string) 
                   </button>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Session hero card */}

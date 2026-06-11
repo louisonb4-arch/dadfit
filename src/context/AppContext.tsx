@@ -152,7 +152,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         goals: { steps: 7000, waterL: 2, bedtime: '23:00' },
         startDate: p.program_start_date ?? new Date().toISOString().split('T')[0],
         weightCurrent: p.weight_kg ?? 0,
-        weightTarget: 0,
+        weightTarget: p.weight_goal_kg ?? 0,
         waistCm: p.waist_cm ?? undefined,
         programDays: 90,
         age: p.age ?? undefined,
