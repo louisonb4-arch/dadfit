@@ -112,7 +112,7 @@ function AppShell() {
       {/* ── Top bar ── */}
       <header className="flex items-center justify-between px-6 py-0 bg-white border-b border-[#F3F4F6] shrink-0" style={{ height: 60 }}>
         <div style={{ width: 220 }}>
-          <a href="/landing.html">
+          <a href="/">
             <img src="/logo.png" alt="DadFit" style={{ height: 48, width: 'auto', objectFit: 'contain' }} />
           </a>
         </div>

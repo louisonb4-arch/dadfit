@@ -226,7 +226,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const signUp = useCallback(async (email: string, password: string, _utmParams?: Record<string, string>) => {
     // UTMs are saved in _loadUserData on first authenticated session (post email-confirmation).
     // Saving here would fail silently — no active session until email is confirmed.
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/app` },
+    })
     return { error: error?.message ?? null }
   }, [])
 
