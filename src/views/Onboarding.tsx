@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
+import { supabase } from '../lib/supabase'
 import { track } from '../lib/posthog'
 
 const TOTAL_STEPS = 6
@@ -58,7 +59,7 @@ function GoalCard({ emoji, title, sub, selected, onClick }: {
 }
 
 export default function Onboarding() {
-  const { completeOnboarding } = useApp()
+  const { completeOnboarding, authUser } = useApp()
   const [step, setStep] = useState(0)
   useEffect(() => { track.startedOnboarding() }, [])
 
@@ -92,7 +93,49 @@ export default function Onboarding() {
   async function handleFinish() {
     setSaving(true)
     setSaveError(null)
-    const { error } = await completeOnboarding({
+
+    const now = new Date().toISOString()
+    const payload = {
+      first_name:              name.trim() || null,
+      age:                     age || null,
+      number_of_kids:          kids ?? null,
+      main_goal:               mainGoal || null,
+      fitness_level:           fitnessLevel || null,
+      pain_areas:              painAreas.length ? painAreas : null,
+      onboarding_completed:    true,
+      onboarding_completed_at: now,
+      onboarded_at:            now,
+      consent_data_health:     consentDataHealth,
+      consent_at:              consentDataHealth ? now : null,
+      program_start_date:      now.split('T')[0],
+      updated_at:              now,
+    }
+
+    console.log('[DadFit] onboarding user_id:', authUser?.id)
+    console.log('[DadFit] onboarding payload:', payload)
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(payload)
+      .eq('id', authUser!.id)
+      .select()
+
+    console.log('[DadFit] onboarding result:', { data, error })
+
+    if (error) {
+      setSaveError(`Save error: ${error.message}`)
+      setSaving(false)
+      return
+    }
+
+    if (!data || data.length === 0) {
+      setSaveError('Save error: 0 rows updated — check Supabase RLS policy.')
+      setSaving(false)
+      return
+    }
+
+    // DB confirmed — update local state
+    completeOnboarding({
       name: name.trim(),
       age: age || undefined,
       numberOfKids: kids ?? undefined,
@@ -101,11 +144,6 @@ export default function Onboarding() {
       painAreas: painAreas.length ? painAreas : undefined,
       consentDataHealth,
     })
-    if (error) {
-      setSaveError(error)
-      setSaving(false)
-      return
-    }
     track.completedOnboarding({ fitness_level: fitnessLevel || undefined, main_goal: mainGoal || undefined, age: age || undefined })
   }
 

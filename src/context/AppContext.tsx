@@ -325,10 +325,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [authUser])
 
+  // DB update is handled by Onboarding.tsx directly — this sets local state only
   const completeOnboarding = useCallback(async (profile: OnboardingProfile): Promise<{ error: string | null }> => {
     const uid = authUser?.id ?? 'local'
     const today = new Date().toISOString().split('T')[0]
-    const now = new Date().toISOString()
     const newUser: User = {
       ...DEFAULT_USER,
       id: uid,
@@ -342,35 +342,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       weightCurrent: profile.weightKg ?? 0,
       waistCm: profile.waistCm,
     }
-
-    if (isSupabaseConfigured && !authUser) {
-      return { error: 'No auth session — reload the page and try again.' }
-    }
-
-    if (isSupabaseConfigured && authUser) {
-      const { data: updated, error } = await supabase.from('profiles').update({
-        first_name: profile.name,
-        age: profile.age,
-        main_goal: profile.mainGoal,
-        fitness_level: profile.fitnessLevel,
-        number_of_kids: profile.numberOfKids,
-        pain_areas: profile.painAreas,
-        weight_kg: profile.weightKg,
-        waist_cm: profile.waistCm,
-        program_start_date: today,
-        onboarded_at: now,
-        onboarding_completed: true,
-        onboarding_completed_at: now,
-        consent_data_health: profile.consentDataHealth,
-        consent_at: profile.consentDataHealth ? now : null,
-        updated_at: now,
-      }).eq('id', authUser.id).select('id, onboarding_completed')
-
-      if (error) return { error: `DB error: ${error.message}` }
-      if (!updated || updated.length === 0) return { error: 'Profile not found or update blocked. Check RLS policy.' }
-    }
-
-    // Only update local state after confirmed Supabase save (or in offline/dev mode)
     setUser(newUser)
     writeLS(KEYS.user, newUser)
     setIsOnboarded(true)
