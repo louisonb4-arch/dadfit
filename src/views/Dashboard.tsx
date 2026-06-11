@@ -33,7 +33,7 @@ function ProgressRing({ pct }: { pct: number }) {
 function ScoreSparkline({ checkIns, sessions }: { checkIns: CheckIn[]; sessions: SessionLog[] }) {
   const points = useMemo(() => {
     const sorted = [...checkIns].sort((a, b) => a.date.localeCompare(b.date)).slice(-10)
-    if (sorted.length < 2) return null
+    if (sorted.length < 1) return null
     return sorted.map(ci => {
       const sessionsOnDay = sessions.filter(s => s.date === ci.date && s.status === 'completed').length
       const walk = Math.round(Math.min(ci.steps / 7000, 1) * 25)
@@ -44,12 +44,22 @@ function ScoreSparkline({ checkIns, sessions }: { checkIns: CheckIn[]; sessions:
     })
   }, [checkIns, sessions])
 
-  if (!points || points.length < 2) {
+  if (!points || points.length < 1) {
     return <div className="w-28 h-11 flex items-center justify-center text-[10px] text-[#9CA3AF]">En attente de données</div>
   }
 
   const W = 110, H = 44
   const max = Math.max(...points, 1)
+
+  if (points.length === 1) {
+    const cy = +(H - (points[0] / max) * H).toFixed(1)
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
+        <circle cx={W / 2} cy={cy} r={4} fill="#22C55E" />
+      </svg>
+    )
+  }
+
   const coords = points.map((v, i) => [+(i / (points.length - 1) * W).toFixed(1), +(H - (v / max) * H).toFixed(1)])
   const line = coords.map(([x, y]) => `${x},${y}`).join(' ')
   const lastX = coords[coords.length - 1][0], lastY = coords[coords.length - 1][1]
@@ -63,7 +73,7 @@ function ScoreSparkline({ checkIns, sessions }: { checkIns: CheckIn[]; sessions:
 
 // ─── Weight area chart ────────────────────────────────────────────────────────
 function WeightChart({ weights, startWeight, targetWeight }: { weights: { date: string; w: number }[]; startWeight: number; targetWeight: number }) {
-  if (weights.length < 2) {
+  if (weights.length < 1) {
     return (
       <div className="flex items-center justify-center py-6 text-xs text-center text-[#9CA3AF] leading-relaxed">
         Enregistre ton poids dans le check-in du jour<br />pour voir la courbe évoluer.
@@ -72,13 +82,26 @@ function WeightChart({ weights, startWeight, targetWeight }: { weights: { date: 
   }
   const W = 280, H = 80
   const vals = weights.map(w => w.w)
-  const min = Math.max(0, Math.min(...vals, targetWeight) - 2)
-  const max = Math.max(...vals, startWeight) + 1
-  const toY = (v: number) => H - ((v - min) / (max - min)) * H
+  const min = Math.max(0, Math.min(...vals, targetWeight > 0 ? targetWeight : vals[0]) - 2)
+  const max = Math.max(...vals, startWeight > 0 ? startWeight : vals[0]) + 1
+  const toY = (v: number) => H - ((v - min) / (max - min || 1)) * H
+  const targetY = targetWeight > 0 ? toY(targetWeight) : null
+
+  if (weights.length === 1) {
+    const dotY = +toY(vals[0]).toFixed(1)
+    return (
+      <svg width="100%" height={H + 4} viewBox={`0 0 ${W} ${H + 4}`} preserveAspectRatio="none" className="overflow-visible">
+        {targetY !== null && (
+          <line x1={0} y1={targetY} x2={W} y2={targetY} stroke="#22C55E" strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
+        )}
+        <circle cx={W / 2} cy={dotY} r={5} fill="#22C55E" />
+      </svg>
+    )
+  }
+
   const coords = vals.map((v, i) => [+(i / (vals.length - 1) * W).toFixed(1), +toY(v).toFixed(1)])
   const line = coords.map(([x, y]) => `${x},${y}`).join(' ')
   const areaPath = `${coords.map(([x, y]) => `${x},${y}`).join(' ')} ${W},${H} 0,${H}`
-  const targetY = toY(targetWeight)
   return (
     <svg width="100%" height={H + 4} viewBox={`0 0 ${W} ${H + 4}`} preserveAspectRatio="none" className="overflow-visible">
       <defs>
@@ -87,7 +110,9 @@ function WeightChart({ weights, startWeight, targetWeight }: { weights: { date: 
           <stop offset="100%" stopColor="#22C55E" stopOpacity="0.03" />
         </linearGradient>
       </defs>
-      <line x1={0} y1={targetY} x2={W} y2={targetY} stroke="#22C55E" strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
+      {targetY !== null && (
+        <line x1={0} y1={targetY} x2={W} y2={targetY} stroke="#22C55E" strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
+      )}
       <polygon points={areaPath} fill="url(#wg)" />
       <polyline points={line} fill="none" stroke="#22C55E" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
       {coords.map(([x, y], i) => i === coords.length - 1 && (

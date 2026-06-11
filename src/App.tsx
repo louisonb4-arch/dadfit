@@ -91,7 +91,14 @@ function AppShell() {
         </div>
       )
     }
-    if (!authUser) return <Auth />
+    if (!authUser) {
+      const params = new URLSearchParams(window.location.search)
+      if (!params.get('auth')) {
+        window.location.replace('/')
+        return null
+      }
+      return <Auth />
+    }
 
     const hasPaidAccess = stripeEnabled && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')
 
