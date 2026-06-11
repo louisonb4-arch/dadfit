@@ -65,9 +65,11 @@ export default function Onboarding() {
 
   // Step 0 — Name
   const [name, setName] = useState('')
-  // Step 1 — About (age + kids)
+  // Step 1 — About (age + kids + body)
   const [age, setAge] = useState('')
   const [kids, setKids] = useState<number | null>(null)
+  const [weightKg, setWeightKg] = useState('')
+  const [waistCm, setWaistCm] = useState('')
   // Step 2 — Fitness level
   const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'some_experience' | 'regular' | ''>('')
   // Step 3 — Main goal
@@ -99,6 +101,8 @@ export default function Onboarding() {
       first_name:              name.trim() || null,
       age:                     age || null,
       number_of_kids:          kids ?? null,
+      weight_kg:               weightKg ? parseFloat(weightKg) : null,
+      waist_cm:                waistCm ? parseFloat(waistCm) : null,
       main_goal:               mainGoal || null,
       fitness_level:           fitnessLevel || null,
       pain_areas:              painAreas.length ? painAreas : null,
@@ -134,6 +138,8 @@ export default function Onboarding() {
       name: name.trim(),
       age: age || undefined,
       numberOfKids: kids ?? undefined,
+      weightKg: weightKg ? parseFloat(weightKg) : undefined,
+      waistCm: waistCm ? parseFloat(waistCm) : undefined,
       fitnessLevel: (fitnessLevel as 'beginner' | 'some_experience' | 'regular') || undefined,
       mainGoal: mainGoal || undefined,
       painAreas: painAreas.length ? painAreas : undefined,
@@ -213,6 +219,31 @@ export default function Onboarding() {
                       onClick={() => setKids(kids === val ? null : val)} />
                   )
                 })}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <div className="flex-1">
+                <p className="text-xs font-black uppercase tracking-widest text-[#6B7280] mb-2">Weight (kg)</p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={weightKg}
+                  onChange={e => setWeightKg(e.target.value)}
+                  placeholder="82"
+                  className="w-full px-4 py-3 rounded-2xl bg-[#F9FAFB] border-2 border-[#F3F4F6] font-inter text-sm text-[#111827] focus:outline-none focus:border-[#22C55E] placeholder-[#D1D5DB]"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-black uppercase tracking-widest text-[#6B7280] mb-2">Waist (cm)</p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={waistCm}
+                  onChange={e => setWaistCm(e.target.value)}
+                  placeholder="95"
+                  className="w-full px-4 py-3 rounded-2xl bg-[#F9FAFB] border-2 border-[#F3F4F6] font-inter text-sm text-[#111827] focus:outline-none focus:border-[#22C55E] placeholder-[#D1D5DB]"
+                />
               </div>
             </div>
           </div>
