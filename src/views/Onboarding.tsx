@@ -69,7 +69,7 @@ export default function Onboarding() {
   const [age, setAge] = useState('')
   const [kids, setKids] = useState<number | null>(null)
   const [weightKg, setWeightKg] = useState('')
-  const [waistCm, setWaistCm] = useState('')
+  const [weightGoalKg, setWeightGoalKg] = useState('')
   // Step 2 — Fitness level
   const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'some_experience' | 'regular' | ''>('')
   // Step 3 — Main goal
@@ -102,7 +102,7 @@ export default function Onboarding() {
       age:                     age || null,
       number_of_kids:          kids ?? null,
       weight_kg:               weightKg ? parseFloat(weightKg) : null,
-      waist_cm:                waistCm ? parseFloat(waistCm) : null,
+      weight_goal_kg:          weightGoalKg ? parseFloat(weightGoalKg) : null,
       main_goal:               mainGoal || null,
       fitness_level:           fitnessLevel || null,
       pain_areas:              painAreas.length ? painAreas : null,
@@ -139,7 +139,6 @@ export default function Onboarding() {
       age: age || undefined,
       numberOfKids: kids ?? undefined,
       weightKg: weightKg ? parseFloat(weightKg) : undefined,
-      waistCm: waistCm ? parseFloat(waistCm) : undefined,
       fitnessLevel: (fitnessLevel as 'beginner' | 'some_experience' | 'regular') || undefined,
       mainGoal: mainGoal || undefined,
       painAreas: painAreas.length ? painAreas : undefined,
@@ -148,9 +147,11 @@ export default function Onboarding() {
     track.completedOnboarding({ fitness_level: fitnessLevel || undefined, main_goal: mainGoal || undefined, age: age || undefined })
   }
 
+  const weightGoalValid = !weightKg || !weightGoalKg || parseFloat(weightGoalKg) < parseFloat(weightKg)
+
   const canContinue = [
     name.trim().length > 0,
-    true,
+    weightGoalValid,
     fitnessLevel !== '',
     mainGoal !== '',
     true,
@@ -222,30 +223,40 @@ export default function Onboarding() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-1">
-              <div className="flex-1">
-                <p className="text-xs font-black uppercase tracking-widest text-[#6B7280] mb-2">Weight (kg)</p>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={weightKg}
-                  onChange={e => setWeightKg(e.target.value)}
-                  placeholder="82"
-                  className="w-full px-4 py-3 rounded-2xl bg-[#F9FAFB] border-2 border-[#F3F4F6] font-inter text-sm text-[#111827] focus:outline-none focus:border-[#22C55E] placeholder-[#D1D5DB]"
-                />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-black uppercase tracking-widest text-[#6B7280] mb-2">Waist (cm)</p>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={waistCm}
-                  onChange={e => setWaistCm(e.target.value)}
-                  placeholder="95"
-                  className="w-full px-4 py-3 rounded-2xl bg-[#F9FAFB] border-2 border-[#F3F4F6] font-inter text-sm text-[#111827] focus:outline-none focus:border-[#22C55E] placeholder-[#D1D5DB]"
-                />
-              </div>
-            </div>
+            {(() => {
+              const current = parseFloat(weightKg)
+              const goal = parseFloat(weightGoalKg)
+              const goalInvalid = weightKg && weightGoalKg && goal >= current
+              return (
+                <div className="flex gap-3 pt-1">
+                  <div className="flex-1">
+                    <p className="text-xs font-black uppercase tracking-widest text-[#6B7280] mb-2">Current weight (kg)</p>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={weightKg}
+                      onChange={e => setWeightKg(e.target.value)}
+                      placeholder="82"
+                      className="w-full px-4 py-3 rounded-2xl bg-[#F9FAFB] border-2 border-[#F3F4F6] font-inter text-sm text-[#111827] focus:outline-none focus:border-[#22C55E] placeholder-[#D1D5DB]"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-black uppercase tracking-widest text-[#6B7280] mb-2">Goal weight (kg)</p>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={weightGoalKg}
+                      onChange={e => setWeightGoalKg(e.target.value)}
+                      placeholder="75"
+                      className={`w-full px-4 py-3 rounded-2xl bg-[#F9FAFB] border-2 font-inter text-sm text-[#111827] focus:outline-none placeholder-[#D1D5DB] ${goalInvalid ? 'border-red-400 focus:border-red-400' : 'border-[#F3F4F6] focus:border-[#22C55E]'}`}
+                    />
+                    {goalInvalid && (
+                      <p className="text-xs text-red-500 mt-1">Must be less than current weight.</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
 
