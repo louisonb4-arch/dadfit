@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz DadFit — Découvre ton profil</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#F8F8F5',
+            text: '#111827',
+            green: { DEFAULT: '#22C55E', dark: '#163B2D', light: '#7AE582', muted: '#DCF5E3' },
+          },
+          fontFamily: {
+            manrope: ['Manrope', 'sans-serif'],
+            inter: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #F8F8F5;
+      color: #111827;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; }
+
+    .nav-blur {
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(248,248,245,0.9);
+    }
+
+    .quiz-option {
+      background: white;
+      border: 1.5px solid rgba(0,0,0,0.08);
+      border-radius: 14px;
+      padding: 16px 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      color: #111827;
+      text-align: left;
+      width: 100%;
+    }
+    .quiz-option:hover { border-color: #22C55E; background: #F0FBF4; }
+    .quiz-option.selected { border-color: #22C55E; background: #DCF5E3; color: #163B2D; font-weight: 600; }
+
+    .quiz-input {
+      background: white;
+      border: 1.5px solid rgba(0,0,0,0.12);
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
+      color: #111827;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .quiz-input:focus { border-color: #22C55E; }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #22C55E, #7AE582);
+      border-radius: 4px;
+      transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    #quiz-result { display: none; }
+
+    .result-card {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      border: 1px solid rgba(0,0,0,0.06);
+      text-align: center;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #DCF5E3;
+      color: #163B2D;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 100px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .habit-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.2);
+      color: #163B2D;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 100px;
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav-blur fixed top-0 left-0 right-0 z-50 border-b border-black/5">
+  <div class="max-w-3xl mx-auto px-6 flex items-center justify-between" style="height:72px;overflow:hidden">
+    <a href="index.html" class="flex items-center">
+      <img src="logo.png" alt="DadFit" style="height:90px;width:auto;object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <span style="display:none;font-family:'Manrope',sans-serif;font-weight:800;font-size:20px;color:#111827">DadFit</span>
+    </a>
+    <div class="flex items-center gap-3">
+      <span class="tag" data-i18n="quiz_tag">Gratuit · 3 min</span>
+      <div class="flex items-center gap-1 px-1 py-1 rounded-full" style="background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.07)">
+        <button id="lang-fr" onclick="setLang('fr')" class="lang-btn text-xs font-semibold px-2.5 py-1 rounded-full transition-all" style="font-family:'Manrope',sans-serif">FR</button>
+        <button id="lang-en" onclick="setLang('en')" class="lang-btn text-xs font-semibold px-2.5 py-1 rounded-full transition-all" style="font-family:'Manrope',sans-serif">EN</button>
+        <button id="lang-es" onclick="setLang('es')" class="lang-btn text-xs font-semibold px-2.5 py-1 rounded-full transition-all" style="font-family:'Manrope',sans-serif">ES</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- QUIZ PAGE -->
+<main class="pt-28 pb-20 px-6 min-h-screen">
+  <div class="max-w-xl mx-auto">
+
+    <!-- Header -->
+    <div class="text-center mb-10" id="quiz-header">
+      <p class="font-manrope font-semibold text-sm uppercase tracking-widest mb-3" style="color:#22C55E" data-i18n="qp_label">Ton profil DadFit</p>
+      <h1 class="font-manrope font-black text-4xl text-text mb-3" style="font-weight:900;line-height:1.1" data-i18n-html="qp_title">Découvre ton programme<br>en 3 minutes.</h1>
+      <p class="text-gray-400 font-inter text-base" data-i18n="qp_sub">10 questions. Un profil sur mesure. Un plan 90 jours adapté à ta vraie vie.</p>
+    </div>
+
+    <!-- QUIZ CONTAINER -->
+    <div id="quiz-container">
+
+      <!-- Progress -->
+      <div class="mb-8">
+        <div class="flex justify-between items-center mb-3">
+          <span class="text-sm text-gray-400 font-inter" id="quiz-step-label">Question 1 / 10</span>
+          <span class="text-sm font-semibold font-inter" style="color:#163B2D" id="quiz-pct-label">10%</span>
+        </div>
+        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div class="progress-bar-fill" id="quiz-progress" style="width:10%"></div>
+        </div>
+      </div>
+
+      <!-- Questions -->
+      <div id="quiz-questions">
+
+        <!-- Q1 -->
+        <div class="quiz-q" data-q="1">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-6">Quel âge as-tu ?</h3>
+          <div class="flex flex-col gap-3">
+            <button class="quiz-option" data-val="30-35">30 – 35 ans</button>
+            <button class="quiz-option" data-val="36-40">36 – 40 ans</button>
+            <button class="quiz-option" data-val="41-45">41 – 45 ans</button>
+            <button class="quiz-option" data-val="46-50">46 – 50 ans</button>
+            <button class="quiz-option" data-val="51-55">51 – 55 ans</button>
+          </div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="quiz-q hidden" data-q="2">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-2">Quel est ton poids actuel ?</h3>
+          <p class="text-gray-400 text-sm font-inter mb-6">En kilogrammes</p>
+          <input type="number" class="quiz-input" id="q2-input" placeholder="ex : 92" min="50" max="200">
+          <button class="bg-green text-white font-semibold px-6 py-3 rounded-full mt-4 hover:bg-green-500 transition-colors font-inter w-full" onclick="nextFromInput('q2-input', '2', 'poids')">
+            Continuer →
+          </button>
+        </div>
+
+        <!-- Q3 -->
+        <div class="quiz-q hidden" data-q="3">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-2">Quelle est ta taille ?</h3>
+          <p class="text-gray-400 text-sm font-inter mb-6">En centimètres</p>
+          <input type="number" class="quiz-input" id="q3-input" placeholder="ex : 178" min="150" max="220">
+          <button class="bg-green text-white font-semibold px-6 py-3 rounded-full mt-4 hover:bg-green-500 transition-colors font-inter w-full" onclick="nextFromInput('q3-input', '3', 'taille')">
+            Continuer →
+          </button>
+        </div>
+
+        <!-- Q4 -->
+        <div class="quiz-q hidden" data-q="4">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-6">Combien d'enfants as-tu ?</h3>
+          <div class="flex flex-col gap-3">
+            <button class="quiz-option" data-val="1">1 enfant</button>
+            <button class="quiz-option" data-val="2">2 enfants</button>
+            <button class="quiz-option" data-val="3">3 enfants</button>
+            <button class="quiz-option" data-val="4+">4 enfants ou plus</button>
+          </div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="quiz-q hidden" data-q="5">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-6">Combien de fois t'entraînes-tu actuellement ?</h3>
+          <div class="flex flex-col gap-3">
+            <button class="quiz-option" data-val="jamais">Jamais ou presque</button>
+            <button class="quiz-option" data-val="1fois">1 fois par semaine</button>
+            <button class="quiz-option" data-val="2-3">2 à 3 fois par semaine</button>
+            <button class="quiz-option" data-val="4+">4 fois ou plus</button>
+          </div>
+        </div>
+
+        <!-- Q6 -->
+        <div class="quiz-q hidden" data-q="6">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-6">Quel est ton principal objectif ?</h3>
+          <div class="flex flex-col gap-3">
+            <button class="quiz-option" data-val="poids">🎯 Perdre du poids</button>
+            <button class="quiz-option" data-val="energie">⚡ Retrouver de l'énergie</button>
+            <button class="quiz-option" data-val="muscle">💪 Construire du muscle</button>
+            <button class="quiz-option" data-val="actif">🏃 Être plus actif au quotidien</button>
+          </div>
+        </div>
+
+        <!-- Q7 -->
+        <div class="quiz-q hidden" data-q="7">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-6">Combien de temps peux-tu consacrer par séance ?</h3>
+          <div class="flex flex-col gap-3">
+            <button class="quiz-option" data-val="15">⚡ 15 minutes — ultra rapide</button>
+            <button class="quiz-option" data-val="20">🕐 20 minutes — efficace</button>
+            <button class="quiz-option" data-val="25">💪 25 minutes — complet</button>
+            <button class="quiz-option" data-val="30">🏆 30 minutes — optimal</button>
+          </div>
+        </div>
+
+        <!-- Q8 -->
+        <div class="quiz-q hidden" data-q="8">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-6">Quel est ton plus gros obstacle ?</h3>
+          <div class="flex flex-col gap-3">
+            <button class="quiz-option" data-val="temps">⏱️ Manque de temps</button>
+            <button class="quiz-option" data-val="energie">🔋 Manque d'énergie</button>
+            <button class="quiz-option" data-val="motivation">🎯 Motivation qui lâche</button>
+            <button class="quiz-option" data-val="nutrition">🥗 Mal manger sans s'en rendre compte</button>
+          </div>
+        </div>
+
+        <!-- Q9 -->
+        <div class="quiz-q hidden" data-q="9">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-2">Combien d'heures dors-tu par nuit ?</h3>
+          <p class="text-gray-400 text-sm font-inter mb-6">En moyenne</p>
+          <input type="number" class="quiz-input" id="q9-input" placeholder="ex : 6" min="4" max="12">
+          <button class="bg-green text-white font-semibold px-6 py-3 rounded-full mt-4 hover:bg-green-500 transition-colors font-inter w-full" onclick="nextFromInput('q9-input', '9', 'sommeil')">
+            Continuer →
+          </button>
+        </div>
+
+        <!-- Q10 -->
+        <div class="quiz-q hidden" data-q="10">
+          <h3 class="font-manrope font-bold text-2xl text-text mb-2">Quel est ton objectif de poids ?</h3>
+          <p class="text-gray-400 text-sm font-inter mb-6">En kilogrammes — sois honnête avec toi-même</p>
+          <input type="number" class="quiz-input" id="q10-input" placeholder="ex : 80" min="50" max="200">
+          <button class="bg-green text-white font-semibold px-6 py-3 rounded-full mt-4 hover:bg-green-500 transition-colors font-inter w-full" onclick="finishQuiz()">
+            Voir mon profil →
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ RÉSULTAT ═══ -->
+    <div id="quiz-result">
+
+      <!-- Profile badge + title -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 mb-5 px-4 py-2 rounded-full font-manrope font-bold text-xs uppercase tracking-widest" style="background:#DCF5E3;color:#163B2D;letter-spacing:0.08em">
+          <span class="w-1.5 h-1.5 rounded-full inline-block" style="background:#22C55E"></span>
+          <span data-i18n="qp_label">Ton profil DadFit</span>
+        </div>
+        <h2 class="font-manrope font-black text-4xl text-text mb-3" style="font-weight:900" id="result-title">Le Repreneur</h2>
+        <p class="text-gray-500 font-inter leading-relaxed max-w-sm mx-auto" id="result-desc">Tu as besoin de reconstruire des habitudes simples et durables.</p>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="result-card">
+          <p class="text-gray-400 text-xs font-inter uppercase tracking-wider mb-2" data-i18n="qr_goal_label">Objectif estimé</p>
+          <p class="font-manrope font-black text-2xl text-text" style="font-weight:900" id="result-goal">-6 à -12 kg</p>
+          <p class="text-gray-400 text-sm font-inter" data-i18n="qr_in90">en 90 jours</p>
+        </div>
+        <div class="result-card">
+          <p class="text-gray-400 text-xs font-inter uppercase tracking-wider mb-2" data-i18n="qr_level_label">Niveau</p>
+          <p class="font-manrope font-black text-2xl text-text" style="font-weight:900" id="result-level">Débutant</p>
+          <p class="text-gray-400 text-sm font-inter" data-i18n="qr_adapted">programme adapté</p>
+        </div>
+        <div class="result-card">
+          <p class="text-gray-400 text-xs font-inter uppercase tracking-wider mb-2" data-i18n="qr_time_label">Temps par séance</p>
+          <p class="font-manrope font-black text-2xl text-text" style="font-weight:900" id="result-time">15 min</p>
+          <p class="text-gray-400 text-sm font-inter" data-i18n="qr_perday">par jour</p>
+        </div>
+        <div class="result-card">
+          <p class="text-gray-400 text-xs font-inter uppercase tracking-wider mb-2" data-i18n="qr_focus_label">Priorité</p>
+          <p class="font-manrope font-black text-xl text-text" style="font-weight:900" id="result-focus">Perte de poids</p>
+          <p class="text-gray-400 text-sm font-inter" data-i18n="qr_main_focus">focus principal</p>
+        </div>
+      </div>
+
+      <!-- Programme preview — 3 phases -->
+      <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-6" style="box-shadow:0 2px 16px rgba(0,0,0,0.05)">
+        <p class="font-manrope font-semibold text-text mb-4" data-i18n="qr_prog_title">Ton programme 90 jours</p>
+
+        <!-- Phase 1 -->
+        <div class="flex gap-4 mb-4 pb-4 border-b border-gray-100">
+          <div class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold font-manrope text-white" style="background:#22C55E">1</div>
+          <div>
+            <p class="font-manrope font-semibold text-text text-sm mb-2">Jours 1–30 · Reprendre le contrôle</p>
+            <div class="flex flex-wrap gap-1.5" id="phase1-habits">
+              <span class="habit-chip">3 séances/semaine</span>
+              <span class="habit-chip">7 000 pas/jour</span>
+              <span class="habit-chip">Sommeil régulier</span>
+              <span class="habit-chip">2L d'eau</span>
+              <span class="habit-chip">Aucun régime strict</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="flex gap-4 mb-4 pb-4 border-b border-gray-100">
+          <div class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold font-manrope text-white" style="background:#163B2D">2</div>
+          <div>
+            <p class="font-manrope font-semibold text-text text-sm mb-2">Jours 31–60 · Construire les habitudes</p>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="habit-chip">4 séances/semaine</span>
+              <span class="habit-chip">Repas structurés</span>
+              <span class="habit-chip">Marche quotidienne</span>
+              <span class="habit-chip">Suivi poids hebdo</span>
+              <span class="habit-chip">Défi énergie</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="flex gap-4">
+          <div class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-bold font-manrope" style="background:#DCF5E3;color:#163B2D">3</div>
+          <div>
+            <p class="font-manrope font-semibold text-text text-sm mb-2">Jours 61–90 · Mode de vie durable</p>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="habit-chip">4–5 séances/semaine</span>
+              <span class="habit-chip">Autonomie alimentaire</span>
+              <span class="habit-chip">Maintien du poids</span>
+              <span class="habit-chip">Routines long terme</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Programme start -->
+      <div class="rounded-2xl p-5 text-white mb-6 text-center" style="background:#163B2D">
+        <p class="text-white/50 text-sm font-inter mb-1" data-i18n="qr_start_label">Ton programme commence</p>
+        <p class="font-manrope font-black text-2xl mb-1" style="font-weight:900" data-i18n="qr_today">Aujourd'hui</p>
+        <p class="text-white/50 text-sm font-inter" data-i18n="qr_first_challenge">Premier défi : 7 000 pas · 2L d'eau · coucher avant 23h</p>
+      </div>
+
+      <!-- CTA -->
+      <a href="index.html#tarifs" class="block bg-green text-white font-semibold py-4 rounded-full text-center hover:bg-green-500 transition-all font-inter text-lg mb-3" style="box-shadow:0 8px 24px rgba(34,197,94,0.3)" data-i18n="qr_cta_prem">
+        Démarrer le programme Premium
+      </a>
+      <a href="index.html#tarifs" class="block border border-gray-200 text-text font-semibold py-3.5 rounded-full text-center hover:bg-gray-50 transition-colors font-inter text-sm mb-4" data-i18n="qr_cta_free">
+        Commencer gratuitement — 7 jours offerts
+      </a>
+      <p class="text-center text-gray-400 text-xs font-inter" data-i18n="qr_disclaimer">Sans carte bancaire · Résiliable à tout moment · Garantie 30 jours</p>
+
+    </div>
+  </div>
+</main>
+
+<script>
+  let currentQ = 1;
+  const totalQ = 10;
+  const answers = {};
+
+  function showQuestion(n) {
+    document.querySelectorAll('.quiz-q').forEach(q => q.classList.add('hidden'));
+    const el = document.querySelector(`.quiz-q[data-q="${n}"]`);
+    if (el) {
+      el.classList.remove('hidden');
+      gsap.from(el, { opacity: 0, x: 30, duration: 0.35, ease: 'power2.out' });
+    }
+    const pct = Math.round((n / totalQ) * 100);
+    document.getElementById('quiz-progress').style.width = pct + '%';
+    document.getElementById('quiz-step-label').textContent = `Question ${n} / ${totalQ}`;
+    document.getElementById('quiz-pct-label').textContent = pct + '%';
+  }
+
+  function nextQuestion() {
+    if (currentQ < totalQ) {
+      currentQ++;
+      showQuestion(currentQ);
+    }
+  }
+
+  function nextFromInput(inputId, qNum, key) {
+    const val = document.getElementById(inputId).value;
+    if (!val) return;
+    answers[key] = val;
+    currentQ = parseInt(qNum) + 1;
+    showQuestion(currentQ);
+  }
+
+  document.querySelectorAll('.quiz-option').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const parent = this.closest('.quiz-q');
+      parent.querySelectorAll('.quiz-option').forEach(b => b.classList.remove('selected'));
+      this.classList.add('selected');
+      const key = `q${parent.dataset.q}`;
+      answers[key] = this.dataset.val;
+      setTimeout(() => nextQuestion(), 350);
+    });
+  });
+
+  function calculateProfile() {
+    const freq  = answers.q5 || 'jamais';
+    const goal  = answers.q6 || 'poids';
+    const time  = answers.q7 || '15';
+
+    let title, desc, level, goalText, phase1Extra;
+
+    if (freq === 'jamais' || freq === '1fois') {
+      title    = 'Le Repreneur';
+      desc     = 'Tu as besoin de reconstruire des habitudes simples et durables. Pas de pression. On reprend depuis le début, et chaque petit pas compte.';
+      level    = 'Débutant';
+      goalText = '-6 à -12 kg';
+    } else if (freq === '2-3') {
+      title    = 'Le Combatif';
+      desc     = 'Tu t\'entraînes déjà un peu, mais tu manques de structure. On va canaliser ta motivation dans un système qui tient sur la durée.';
+      level    = 'Intermédiaire';
+      goalText = '-8 à -14 kg';
+    } else {
+      title    = 'Le Performeur';
+      desc     = 'Tu connais l\'effort. Ce qu\'il te faut, c\'est optimiser la nutrition, la récupération, et tenir sur 90 jours sans te cramer.';
+      level    = 'Avancé';
+      goalText = '-5 à -10 kg';
+    }
+
+    const focus = goal === 'poids'   ? 'Perte de poids'
+                : goal === 'energie' ? 'Énergie & vitalité'
+                : goal === 'muscle'  ? 'Masse musculaire'
+                :                     'Activité générale';
+
+    document.getElementById('result-title').textContent  = title;
+    document.getElementById('result-desc').textContent   = desc;
+    document.getElementById('result-level').textContent  = level;
+    document.getElementById('result-goal').textContent   = goalText;
+    document.getElementById('result-time').textContent   = time + ' min';
+    document.getElementById('result-focus').textContent  = focus;
+  }
+
+  function finishQuiz() {
+    const val = document.getElementById('q10-input').value;
+    if (!val) return;
+    answers['objectif'] = val;
+    calculateProfile();
+
+    const container = document.getElementById('quiz-container');
+    const header    = document.getElementById('quiz-header');
+    const result    = document.getElementById('quiz-result');
+
+    gsap.to([header, container], {
+      opacity: 0, y: -20, duration: 0.3,
+      onComplete: () => {
+        header.style.display    = 'none';
+        container.style.display = 'none';
+        result.style.display    = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        gsap.from(result, { opacity: 0, y: 30, duration: 0.55, ease: 'power3.out' });
+      }
+    });
+  }
+
+  // ─── i18n ───
+  const TQ = {
+    fr: {
+      quiz_tag:'Gratuit · 3 min',
+      qp_label:'Ton profil DadFit',qp_title:'Découvre ton programme<br>en 3 minutes.',
+      qp_sub:'10 questions. Un profil sur mesure. Un plan 90 jours adapté à ta vraie vie.',
+      qr_goal_label:'Objectif estimé',qr_in90:'en 90 jours',
+      qr_level_label:'Niveau',qr_adapted:'programme adapté',
+      qr_time_label:'Temps par séance',qr_perday:'par jour',
+      qr_focus_label:'Priorité',qr_main_focus:'focus principal',
+      qr_prog_title:'Ton programme 90 jours',
+      qr_start_label:'Ton programme commence',qr_today:'Aujourd\'hui',
+      qr_first_challenge:'Premier défi : 7 000 pas · 2L d\'eau · coucher avant 23h',
+      qr_cta_prem:'Démarrer le programme Premium',
+      qr_cta_free:'Commencer gratuitement — 7 jours offerts',
+      qr_disclaimer:'Sans carte bancaire · Résiliable à tout moment · Garantie 30 jours',
+    },
+    en: {
+      quiz_tag:'Free · 3 min',
+      qp_label:'Your DadFit Profile',qp_title:'Discover your programme<br>in 3 minutes.',
+      qp_sub:'10 questions. A custom profile. A 90-day plan adapted to your real life.',
+      qr_goal_label:'Estimated goal',qr_in90:'in 90 days',
+      qr_level_label:'Level',qr_adapted:'adapted programme',
+      qr_time_label:'Time per session',qr_perday:'per day',
+      qr_focus_label:'Priority',qr_main_focus:'main focus',
+      qr_prog_title:'Your 90-day programme',
+      qr_start_label:'Your programme starts',qr_today:'Today',
+      qr_first_challenge:'First challenge: 7,000 steps · 2L water · bed before 11pm',
+      qr_cta_prem:'Start Premium programme',
+      qr_cta_free:'Start free — 7 days included',
+      qr_disclaimer:'No credit card · Cancel anytime · 30-day guarantee',
+    },
+    es: {
+      quiz_tag:'Gratis · 3 min',
+      qp_label:'Tu perfil DadFit',qp_title:'Descubre tu programa<br>en 3 minutos.',
+      qp_sub:'10 preguntas. Un perfil a medida. Un plan de 90 días adaptado a tu vida real.',
+      qr_goal_label:'Objetivo estimado',qr_in90:'en 90 días',
+      qr_level_label:'Nivel',qr_adapted:'programa adaptado',
+      qr_time_label:'Tiempo por sesión',qr_perday:'por día',
+      qr_focus_label:'Prioridad',qr_main_focus:'enfoque principal',
+      qr_prog_title:'Tu programa 90 días',
+      qr_start_label:'Tu programa empieza',qr_today:'Hoy',
+      qr_first_challenge:'Primer reto: 7.000 pasos · 2L agua · acostarse antes de las 23h',
+      qr_cta_prem:'Iniciar el programa Premium',
+      qr_cta_free:'Empezar gratis — 7 días incluidos',
+      qr_disclaimer:'Sin tarjeta · Cancelable en cualquier momento · Garantía 30 días',
+    }
+  };
+
+  function setLang(lang) {
+    localStorage.setItem('dadfit-lang', lang);
+    document.documentElement.lang = lang;
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      const active = btn.id === 'lang-' + lang;
+      btn.style.background = active ? '#22C55E' : 'transparent';
+      btn.style.color = active ? 'white' : '#6B7280';
+    });
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const k = el.dataset.i18n;
+      if (TQ[lang] && TQ[lang][k] !== undefined) el.textContent = TQ[lang][k];
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      const k = el.dataset.i18nHtml;
+      if (TQ[lang] && TQ[lang][k] !== undefined) el.innerHTML = TQ[lang][k];
+    });
+  }
+
+  (function() {
+    const saved = localStorage.getItem('dadfit-lang') || 'fr';
+    setLang(saved);
+  })();
+</script>
+
+</body>
+</html>
